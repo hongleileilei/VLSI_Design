@@ -402,8 +402,8 @@ void FM_Algo_mods(struct Node_List* List,char* table[50][50], int amount){
 }
 
 void FM_Algo_area(struct Node_List* List,char* table[50][50], int amount){
-  int ceiling = (int)ceil((double)0.7*amount);
-  int flooring = (int)floor((double)0.3*amount);
+  int ceiling = (int)ceil((double)0.8*amount);
+  int flooring = (int)floor((double)0.2*amount);
   printf("area constraint is from %d to %d\n",flooring,ceiling);
   int amount_0=0;
   int amount_1=0;
@@ -582,7 +582,7 @@ int main(){
   printf("\n");
   printf("%d is initial cut size\n",cut_size(cell_list));
   print_list(cell_list);
-  FM_Algo_area(cell_list,nets_table,num_mods);
+  FM_Algo_area(cell_list,nets_table,10);
   fclose(fp_are);
   fclose(fp_net);
   exit(EXIT_SUCCESS);
