@@ -331,8 +331,8 @@ int cut_size(struct Node_List* List){
 }
 
 void FM_Algo_mods(struct Node_List* List,char* table[50][50], int amount){
-  int ceiling = (int)ceil((double)0.8*amount);
-  int flooring = (int)floor((double)0.2*amount);
+  int ceiling = (int)ceil((double)0.7*amount);
+  int flooring = (int)floor((double)0.3*amount);
   printf("module amount constraint is from %d to %d\n",flooring,ceiling);
   int amount_0=0;
   int amount_1=0;
@@ -342,6 +342,18 @@ void FM_Algo_mods(struct Node_List* List,char* table[50][50], int amount){
   int cutsize=cut_size(List);
   min_cut=cutsize;
   int loop=0;
+  int cycle = 0;
+  int min_gain;
+  char* min_part_0[7];
+  char* min_part_1[7];
+  for(int i=0; i<7; i++){
+    min_part_0[i]=(char*)malloc(sizeof(char*));
+    min_part_1[i]=(char*)malloc(sizeof(char*));
+  }
+  int min_part_0_i=0;
+  int min_part_1_i=0;
+
+  int new_min = 0;
   struct Node* current = List->start;
   while(current != NULL){
     if(current->partition==0){
@@ -354,51 +366,122 @@ void FM_Algo_mods(struct Node_List* List,char* table[50][50], int amount){
     current = current->next;
   }
   current = List->start;
-  while(all_locked(List)!=1 && loop != amount_nodes){
-    if(current->partition==0 && current->lock==0 && amount_0-1>=flooring && amount_1+1<=ceiling){
-      loop = 0;
-      current->partition=1;
-      current->lock=1;
-      cutsize = cut_size(List);
-      amount_0--;
-      amount_1++;
-      //printf("%d is current cut size\n",cutsize);
-      if(cutsize<min_cut){
-        min_cut=cutsize;
-      }
-      Gain_cal(List,table);
-      sort_gain(List);
-      current = List->start;
-    }
-    else if(current->partition==1 &&
-        current->lock==0 &&
-        amount_1-1>=flooring &&
-        amount_0+1<=ceiling){
+  while(cycle != amount_nodes){
+    while(all_locked(List)!=1 && loop != amount_nodes){
+      if(current->partition==0 && current->lock==0 && amount_0-1>=flooring && amount_1+1<=ceiling){
         loop = 0;
-        current->partition=0;
+        current->partition=1;
         current->lock=1;
         cutsize = cut_size(List);
-        amount_1--;
-        amount_0++;
+        amount_0--;
+        amount_1++;
         //printf("%d is current cut size\n",cutsize);
         if(cutsize<min_cut){
+          new_min = 1;
+          min_part_0_i=0;
+          min_part_1_i=0;
+          min_gain=0;
+          for(int i=0; i<7; i++){
+            min_part_0[i] = (char*)realloc(min_part_0[i],sizeof(char*));
+            min_part_1[i] = (char*)realloc(min_part_1[i],sizeof(char*));
+          }
           min_cut=cutsize;
+          struct Node* mem_temp = List->start;
+          while(mem_temp != NULL){
+            if(mem_temp->partition == 0){
+              strcpy(min_part_0[min_part_0_i],mem_temp->id);
+            }
+            else{
+              strcpy(min_part_1[min_part_1_i],mem_temp->id);
+            }
+            mem_temp = mem_temp->next;
+          }
         }
         Gain_cal(List,table);
+        if(new_min== 1){
+          struct Node* mem_temp = List->start;
+          while(mem_temp != NULL){
+            min_gain += mem_temp->gain;
+            mem_temp=mem_temp->next;
+          }
+          new_min=0;
+        }
         sort_gain(List);
         current = List->start;
       }
-      else{
-        loop++;
-        current = current->next;
-        if(current == NULL){
+      else if(current->partition==1 &&
+          current->lock==0 &&
+          amount_1-1>=flooring &&
+          amount_0+1<=ceiling){
+          loop = 0;
+          current->partition=0;
+          current->lock=1;
+          cutsize = cut_size(List);
+          amount_1--;
+          amount_0++;
+          //printf("%d is current cut size\n",cutsize);
+          if(cutsize<min_cut){
+            new_min = 1;
+            min_part_0_i=0;
+            min_part_1_i=0;
+            min_gain=0;
+            for(int i=0; i<7; i++){
+              min_part_0[i] = (char*)realloc(min_part_0[i],sizeof(char*));
+              min_part_1[i] = (char*)realloc(min_part_1[i],sizeof(char*));
+            }
+            min_cut=cutsize;
+            struct Node* mem_temp = List->start;
+            while(mem_temp != NULL){
+              if(mem_temp->partition == 0){
+                strcpy(min_part_0[min_part_0_i],mem_temp->id);
+                min_part_0_i++;
+              }
+              else{
+                strcpy(min_part_1[min_part_1_i],mem_temp->id);
+                min_part_1_i++;
+              }
+              mem_temp = mem_temp->next;
+            }
+          }
+          Gain_cal(List,table);
+          if(new_min== 1){
+            struct Node* mem_temp = List->start;
+            while(mem_temp != NULL){
+              min_gain += mem_temp->gain;
+              mem_temp=mem_temp->next;
+            }
+            new_min=0;
+          }
+          sort_gain(List);
           current = List->start;
         }
+        else{
+          loop++;
+          current = current->next;
+          if(current == NULL){
+            current = List->start;
+          }
+        }
+        //print_list(List);
+        //printf("\n");
       }
-      print_list(List);
-      printf("\n");
-    }
-  printf("minimum cut size: %d\n",min_cut);
+      cycle++;
+      free_all_lock(List);
+  }
+  printf("%d is the minimum cut gains\n",min_gain);
+  min_part_0_i=0;
+  min_part_1_i=0;
+  printf("min in partition 0: ");
+  while(min_part_0_i<7 && strcmp(min_part_0[min_part_0_i],"")!=0){
+    printf("%s ",min_part_0[min_part_0_i]);
+    min_part_0_i++;
+  }
+  printf("\nmin in partition 1: ");
+  while(min_part_1_i<7 && strcmp(min_part_1[min_part_1_i],"")!=0){
+    printf("%s ",min_part_1[min_part_1_i]);
+    min_part_1_i++;
+  }
+  printf("\nminimum cut size: %d\n",min_cut);
 }
 
 void FM_Algo_area(struct Node_List* List,char* table[50][50], int amount){
@@ -413,6 +496,18 @@ void FM_Algo_area(struct Node_List* List,char* table[50][50], int amount){
   int cutsize=cut_size(List);
   min_cut=cutsize;
   int loop=0;
+  int cycle=0;
+  int min_gain;
+  char* min_part_0[7];
+  char* min_part_1[7];
+  for(int i=0; i<7; i++){
+    min_part_0[i]=(char*)malloc(sizeof(char*));
+    min_part_1[i]=(char*)malloc(sizeof(char*));
+  }
+  int min_part_0_i=0;
+  int min_part_1_i=0;
+
+  int new_min = 0;
   struct Node* current = List->start;
   while(current != NULL){
     if(current->partition==0){
@@ -425,51 +520,122 @@ void FM_Algo_area(struct Node_List* List,char* table[50][50], int amount){
     current = current->next;
   }
   current = List->start;
-  while(all_locked(List)!=1 && loop != amount_nodes){
-    if(current->partition==0 && current->lock==0 && amount_0-current->area>flooring && amount_1+current->area<ceiling){
-      loop = 0;
-      current->partition=1;
-      current->lock=1;
-      cutsize = cut_size(List);
-      amount_0 -= current->area;
-      amount_1 += current->area;
-      printf("%d is current cut size\n",cutsize);
-      if(cutsize<min_cut){
-        min_cut=cutsize;
-      }
-      Gain_cal(List,table);
-      sort_gain(List);
-      current = List->start;
-    }
-    else if(current->partition==1 &&
-        current->lock==0 &&
-        amount_1-current->area>flooring &&
-        amount_0+current->area<ceiling){
+  while(cycle != amount_nodes){
+    while(all_locked(List)!=1 && loop != amount_nodes){
+      if(current->partition==0 && current->lock==0 && amount_0-current->area>flooring && amount_1+current->area<ceiling){
         loop = 0;
-        current->partition=0;
+        current->partition=1;
         current->lock=1;
         cutsize = cut_size(List);
-        amount_1 -= current->area;
-        amount_0 += current->area;
-        printf("%d is current cut size\n",cutsize);
+        amount_0 -= current->area;
+        amount_1 += current->area;
+        //printf("%d is current cut size\n",cutsize);
         if(cutsize<min_cut){
+          new_min = 1;
+          min_part_0_i=0;
+          min_part_1_i=0;
+          min_gain=0;
+          for(int i=0; i<7; i++){
+            min_part_0[i] = (char*)realloc(min_part_0[i],sizeof(char*));
+            min_part_1[i] = (char*)realloc(min_part_1[i],sizeof(char*));
+          }
           min_cut=cutsize;
+          struct Node* mem_temp = List->start;
+          while(mem_temp != NULL){
+            if(mem_temp->partition == 0){
+              strcpy(min_part_0[min_part_0_i],mem_temp->id);
+            }
+            else{
+              strcpy(min_part_1[min_part_1_i],mem_temp->id);
+            }
+            mem_temp = mem_temp->next;
+          }
         }
         Gain_cal(List,table);
+        if(new_min== 1){
+          struct Node* mem_temp = List->start;
+          while(mem_temp != NULL){
+            min_gain += mem_temp->gain;
+            mem_temp=mem_temp->next;
+          }
+          new_min=0;
+        }
         sort_gain(List);
         current = List->start;
       }
-      else{
-        loop++;
-        current = current->next;
-        if(current == NULL){
+      else if(current->partition==1 &&
+          current->lock==0 &&
+          amount_1-current->area>flooring &&
+          amount_0+current->area<ceiling){
+          loop = 0;
+          current->partition=0;
+          current->lock=1;
+          cutsize = cut_size(List);
+          amount_1 -= current->area;
+          amount_0 += current->area;
+          //printf("%d is current cut size\n",cutsize);
+          if(cutsize<min_cut){
+            new_min = 1;
+            min_part_0_i=0;
+            min_part_1_i=0;
+            min_gain=0;
+            for(int i=0; i<7; i++){
+              min_part_0[i] = (char*)realloc(min_part_0[i],sizeof(char*));
+              min_part_1[i] = (char*)realloc(min_part_1[i],sizeof(char*));
+            }
+            min_cut=cutsize;
+            struct Node* mem_temp = List->start;
+            while(mem_temp != NULL){
+              if(mem_temp->partition == 0){
+                strcpy(min_part_0[min_part_0_i],mem_temp->id);
+                min_part_0_i++;
+              }
+              else{
+                strcpy(min_part_1[min_part_1_i],mem_temp->id);
+                min_part_1_i++;
+              }
+              mem_temp = mem_temp->next;
+            }
+          }
+          Gain_cal(List,table);
+          if(new_min== 1){
+            struct Node* mem_temp = List->start;
+            while(mem_temp != NULL){
+              min_gain += mem_temp->gain;
+              mem_temp=mem_temp->next;
+            }
+            new_min=0;
+          }
+          sort_gain(List);
           current = List->start;
         }
+        else{
+          loop++;
+          current = current->next;
+          if(current == NULL){
+            current = List->start;
+          }
+        }
+        //print_list(List);
+        //printf("\n");
       }
-      print_list(List);
-      printf("\n");
+      cycle++;
+      free_all_lock(List);
     }
-  printf("minimum cut size in area constraint: %d\n",min_cut);
+    printf("%d is the minimum cut gains\n",min_gain);
+    min_part_0_i=0;
+    min_part_1_i=0;
+    printf("min in partition 0: ");
+    while(min_part_0_i<7 && strcmp(min_part_0[min_part_0_i],"")!=0){
+      printf("%s ",min_part_0[min_part_0_i]);
+      min_part_0_i++;
+    }
+    printf("\nmin in partition 1: ");
+    while(min_part_1_i<7 && strcmp(min_part_1[min_part_1_i],"")!=0){
+      printf("%s ",min_part_1[min_part_1_i]);
+      min_part_1_i++;
+    }
+    printf("\nminimum cut size: %d\n",min_cut);
 }
 
 int main(){
@@ -582,7 +748,12 @@ int main(){
   printf("\n");
   printf("%d is initial cut size\n",cut_size(cell_list));
   print_list(cell_list);
-  FM_Algo_area(cell_list,nets_table,10);
+  printf("\n");
+  FM_Algo_mods(cell_list,nets_table,10);
+  printf("\n");
+  print_list(cell_list);
+  printf("%d is final cut size\n",cut_size(cell_list));
+  printf("\n");
   fclose(fp_are);
   fclose(fp_net);
   exit(EXIT_SUCCESS);
